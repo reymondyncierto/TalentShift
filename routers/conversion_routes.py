@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File
 from controllers.llm_controller import LLMController
 from controllers.conversion_controller import PDFConverter
+import json
 
 llm = LLMController()
 router = APIRouter()
@@ -11,4 +12,8 @@ async def convert_pdf(file: UploadFile = File(...)):
   converter = PDFConverter(contents)
   text = converter.extract_text()
   response = llm.generate_response(text)
-  return {"text": text, "response": response}
+  data = json.loads(response)
+
+  print(data)
+
+  return {"status": "success"}
