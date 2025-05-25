@@ -1,8 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File
 from controllers.conversion_controller import convert_pdf_to_text
 
 router = APIRouter()
 
 @router.post("/pdf")
-def convert_pdf_to_text(file: bytes):
-    return convert_pdf_to_text(file)
+async def convert_pdf(file: UploadFile = File(...)):
+  contents = await file.read()
+  return {"text": convert_pdf_to_text(contents)}
