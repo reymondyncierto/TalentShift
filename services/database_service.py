@@ -2,7 +2,7 @@ from database import client
 
 class DatabaseService:
   def __init__(self):
-      self.db = client
+    self.db = client
 
   def insert_resume(self, data: dict):
 
