@@ -1,19 +1,14 @@
-import openai
+import os
 from openai import OpenAI
-from configs.azure_config import AZURE_API_KEY, AZURE_BASE_URL, AZURE_API_KEY_1
 from configs.llm_config import SYSTEM_CONTENT, USER_CONTENT, OPENAI_MODEL, LLM_MAX_TOKENS, LLM_TEMPERATURE, LLM_TOP_P
 
 class LLMController:
   def __init__(self):
-    self.api_keys = [AZURE_API_KEY, AZURE_API_KEY_1]
-    self.current_key_index = 0
-    self.client = self._create_client()
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+      raise ValueError("No OpenAI API key found. Set OPENAI_API_KEY in your environment.")
 
-  def _create_client(self):
-    return OpenAI(
-      api_key=self.api_keys[self.current_key_index],
-      base_url=AZURE_BASE_URL
-    )
+    self.client = OpenAI(api_key=api_key)
 
   def generate_response(self, user_input):
     system_message = {
@@ -34,22 +29,22 @@ class LLMController:
         top_p=LLM_TOP_P,
         messages=messages
       )
-      reply = response.choices[0].message.content.strip()
-      return reply
 
-    except openai.RateLimitError:
-      print(f"Rate limit exceeded on key {self.current_key_index}. Switching keys...")
-      return self._handle_rate_limit(user_input)
+      # response.choices is expected; handle gracefully if structure differs
+      content = None
+      if hasattr(response, 'choices') and len(response.choices) > 0:
+        choice = response.choices[0]
+        # newer SDKs may store the message in choice.message
+        if hasattr(choice, 'message') and hasattr(choice.message, 'content'):
+          content = choice.message.content
+        # fallback to 'text' property if present
+        elif hasattr(choice, 'text'):
+          content = choice.text
+
+      if content is None:
+        return ""  # empty reply if structure unexpected
+
+      return content.strip()
 
     except Exception as e:
-      print(f"Unexpected error: {str(e)}")
       return f"Error processing request: {str(e)}"
-
-  def _handle_rate_limit(self, user_input):
-    self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
-    self.client = self._create_client()
-
-    if self.current_key_index == 0:
-      print(f"All keys rate limited. Wait for refresh...")
-
-    return self.generate_response(user_input)
